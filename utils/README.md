@@ -2,9 +2,7 @@
 
 ## Requirements
 ```bash
-conda create --name ${YOUR_ENV_NAME}
-pip install -r requirements.txt
-conda activate ${YOUR_ENV_NAME}
+pip install pandas xport
 ```
 
 ## `valid-data.py`
