@@ -1,0 +1,8 @@
+.api-key
+src/training-data/raw-data/*
+src/training-data/csv-data/*
+src/training-data/papers/*
+!src/training-data/raw-data/.gitkeep
+!src/training-data/csv-data/.gitkeep
+!src/training-data/papers/.gitkeep
+.idea/
