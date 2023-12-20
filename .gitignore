@@ -6,3 +6,5 @@ src/training-data/papers/*
 !src/training-data/csv-data/.gitkeep
 !src/training-data/papers/.gitkeep
 .idea/
+med-chat-*
+client_secret*
