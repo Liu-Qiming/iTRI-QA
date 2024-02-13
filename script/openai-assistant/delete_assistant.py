@@ -29,7 +29,7 @@ def delete_assistant_from_file(file_path, assistant_id):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python script.py <assistant_id>")
+        print("Usage: python delete_assistant.py <assistant_id>")
         sys.exit(1)
 
     assistant_id = sys.argv[1]
