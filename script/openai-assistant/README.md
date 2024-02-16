@@ -18,3 +18,8 @@ This is a Python script to delete an assistant and its instances in `./data/assi
 ### Usage:
 ```bash
 python delete_assistant.py <assistant_id>
+
+## Testing:
+You may test the module with the following command:
+```bash
+python -m unittest test/test_assistant.py
