@@ -8,3 +8,4 @@ src/training-data/papers/*
 .idea/
 med-chat-*
 client_secret*
+__pycache__/
