@@ -1,6 +1,6 @@
-# ChatGPT-powered Bio-Medical Research Tool
+# iTRI(Interactive Trained Research Innovator)-GPT, a ChatGPT-powered Bio-Medical Research Tool
 
-Welcome to the repository of the ChatGPT-powered research tool designed to enhance bio-medical scientific discoveries. This innovative tool leverages existing datasets from population studies to provide a sophisticated analysis platform.
+Welcome to the repository of iTRI-GPT designed to enhance bio-medical scientific discoveries. This innovative tool leverages existing datasets from population studies to provide a sophisticated analysis platform.
 
 ## Overview
 
