@@ -17,10 +17,43 @@ To add a new user to the server and assign them to the `group-name` group:
 ```bash
 sudo adduser newusername
 sudo usermod -aG group-name newusername
+sudo chmod 700 /home/newusername/.ssh
+sudo chown newusername:newusername /home/newusername/.ssh
 ```
 
 - **Step 1:** Replace `newusername` with the actual username for the new user, and follow the instruction.
 - **Step 2:** This adds the new user to the `group-name` group, granting them access to the shared project resources.
+
+#### **Manually Adding a User's SSH Public Key to `authorized_keys`**
+
+When a user generates an SSH key pair and sends you their public key, you, as an administrator, will need to add it to their `authorized_keys` file to grant them SSH access. Follow these steps:
+
+**Step 1: Obtain the Public Key**
+- The user should provide their SSH public key, which typically looks like this: `ssh-rsa AAAAB3Nza... username@host`.
+
+**Step 2: Access the User's Home Directory**
+- Navigate to THE USER's `.ssh` directory located in their home directory. e.g. if the user you want to grant access is qliu, then you should access `/home/qliu/.ssh`. 
+
+**Step 3: Edit or Create the `authorized_keys` File**
+- Open or create the `authorized_keys` file within the `.ssh` directory:
+  ```bash
+  sudo nano /home/username/.ssh/authorized_keys
+  ```
+- Paste the user’s public key into this file. Make sure it remains on a single line.
+- If the user has multiple devices, add each key separated with a new line. 
+
+**Step 4: Set Proper Permissions for the `authorized_keys` File**
+- Set the correct permissions for the `authorized_keys` file to ensure it is secure and readable by the server's SSH process:
+  ```bash
+  sudo chmod 600 /home/username/.ssh/authorized_keys
+  sudo chown username:username /home/username/.ssh/authorized_keys
+  ```
+
+**Step 5: Verify SSH Access**
+- Ask the user to test their SSH connection to ensure the setup was successful:
+  ```bash
+  ssh username@server-ip
+  ```
 
 #### **Managing SSH Service**
 
