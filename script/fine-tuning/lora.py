@@ -42,12 +42,13 @@ training_args = TrainingArguments(
     output_dir='./results_llama_lora',  # Directory for saving results
     eval_strategy="epoch",              # Updated: Evaluation strategy per epoch
     learning_rate=2e-5,                 # Learning rate for fine-tuning
-    per_device_train_batch_size=8,      # Batch size per device for training
-    per_device_eval_batch_size=8,       # Batch size per device for evaluation
+    per_device_train_batch_size=2,      # Batch size per device for training
+    per_device_eval_batch_size=2,       # Batch size per device for evaluation
     num_train_epochs=3,                 # Number of fine-tuning epochs
     weight_decay=0.01,                  # Weight decay to regularize the model
     logging_dir='./logs_llama_lora',    # Directory for logging
     save_total_limit=2,                 # Limit the number of saved model checkpoints
+    fp16=True                           # Enable mixed precision
 )
 
 # 5. Create Trainer instance
