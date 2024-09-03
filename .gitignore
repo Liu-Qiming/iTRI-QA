@@ -9,3 +9,6 @@ src/training-data/papers/*
 med-chat-*
 client_secret*
 __pycache__/
+
+# models
+models/*
