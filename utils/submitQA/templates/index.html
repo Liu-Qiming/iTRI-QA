@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Question and Answer Input</title>
+  <title>Question, Answer, PMID, and DOI Input</title>
 </head>
 <body>
 
-  <h1>Submit Your Question, Answer, and PMID</h1>
+  <h1>Submit Your Question, Answer, PMID, and DOI</h1>
 
   <form id="qaForm" onsubmit="handleSubmit(event)">
     <label for="question">Question:</label><br>
@@ -18,6 +18,9 @@
 
     <label for="pmid">PMID:</label><br>
     <input type="text" id="pmid" name="pmid" required><br><br>
+
+    <label for="doi">DOI:</label><br>
+    <input type="text" id="doi" name="doi" required><br><br>
 
     <input type="submit" value="Submit">
   </form>
