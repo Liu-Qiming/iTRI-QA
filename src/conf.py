@@ -7,7 +7,7 @@ model_config = {
     "top_k": 50,
     "max_new_tokens": 120,
     "do_sample": True,
-    "num_beams": 4,
+    "num_beams": 2,
     "early_stopping": True,
 }
 
