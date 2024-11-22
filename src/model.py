@@ -88,14 +88,22 @@ class ItriModel(BaseLLMModel):
         """Enable performance optimizations to reduce memory usage."""
         self.model.gradient_checkpointing_enable()  # Save memory during training/inference
 
-    def generate(self, query: str, context: str):
-        input_text = f"Question: {query}\nContext: {context}\nAnswer:"
+    def generate(self, prompt: str):
+        """
+        Generate an answer using the provided prompt.
+
+        Args:
+            prompt (str): The rendered prompt.
+
+        Returns:
+            str: The generated answer.
+        """
         inputs = self.tokenizer(
-            input_text,
+            prompt,
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=4096
+            max_length=8192
         )
         batch = {k: v.to(self.device) for k, v in inputs.items()}
 
@@ -103,16 +111,26 @@ class ItriModel(BaseLLMModel):
             output = self.model.generate(
                 batch["input_ids"],
                 attention_mask=batch["attention_mask"],
-                max_new_tokens=120,
+                max_new_tokens=100,
                 do_sample=True,
                 num_beams=2,
+                repetition_penalty=1.5,
+                no_repeat_ngram_size=2,
                 early_stopping=True,
                 pad_token_id=self.tokenizer.pad_token_id
             )
 
         decoded_output = self.tokenizer.decode(output[0], skip_special_tokens=True)
-        answer = decoded_output.split("Answer:")[1].strip() if "Answer:" in decoded_output else decoded_output
+
+        # Extract the answer and remove template repeats
+        answer_start = decoded_output.rfind("# Answer:")
+        if answer_start != -1:
+            answer = decoded_output[answer_start + len("# Answer:"):].strip()
+        else:
+            answer = decoded_output.strip()
+
         return answer
+
 
     def save_model(self, base_save_path: str):
         """Save the model and tokenizer with versioning."""

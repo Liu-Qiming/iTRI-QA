@@ -27,7 +27,7 @@ lora_config = LoraConfig(
     bias="lora_only"
 )
 
-model_name = "meta-llama/Llama-3.2-1B"
+model_name = "meta-llama/Llama-3.2-3B"
 
 # TODO: Model Path
 model_path = "models/"
