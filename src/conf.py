@@ -32,14 +32,13 @@ model_name = "meta-llama/Llama-3.2-3B"
 # TODO: Model Path
 model_path = "models/"
 
+results_path = "results/"
+
 # TODO: Adapter Path
 adapter_path = "models/"
 
-# TODO: Template Path
+# Directory stores all the templates
 template_path = "prompt/templates/"
 
-# Context Path
-context_path = "data/context/Cholesterol - Low - Density Lipoprotein (LDL) & Triglycerides:2015-2016.csv"
-
-# Query Path
-query_path = "data/query/query.json"
+# QA Data Path
+QA_data_path = "data/QA_data/qa_abstract.jsonl"

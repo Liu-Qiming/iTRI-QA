@@ -24,14 +24,14 @@ def main():
 
     try:
         # Load queries and context
-        queries = load_json_data(conf.query_path)["query"]
-        context = process_csv_data(conf.context_path, 5)
+        # queries = load_jsonl_as_dict(conf.QA_data_path)[0]["question"]
+        context_list = load_jsonl_as_dict(conf.QA_data_path)
 
-        # Render and generate answers
-        print("Generating answers for queries and context...")
-        for query in queries:
+        for ctx in context_list:
+            # Render and generate answers
+            print("Generating QA set based on the abstracts")
             # Render the prompt using PromptManager
-            prompt = prompt_manager.render_prompt("llama3.2.j2", {"query": query, "context": context})
+            prompt = prompt_manager.render_prompt("llama3.2.j2", {"context": ctx["abstract"]})
             answer = model.generate(prompt)
 
             # Print results
@@ -39,6 +39,7 @@ def main():
             # print(f"Context: {context}\n")
             # print("---------------------------------")
             print(f"Answer: {answer}\n")
+            print("---------------------------------")
 
         # Save the model after generation
         # model.save_model(base_save_path="./models")
