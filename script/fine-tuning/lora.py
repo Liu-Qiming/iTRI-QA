@@ -1,74 +1,99 @@
-from transformers import AutoTokenizer, Trainer, TrainingArguments
+import os
+from transformers import Trainer, TrainingArguments, AutoTokenizer
 from peft import get_peft_model, LoraConfig, TaskType
-from transformers import LlamaForSequenceClassification
-from datasets import load_dataset
+from datasets import Dataset
+import torch
+from src.model import ItriModel
+from src.utils import load_and_format_jsonl
+from src.conf import conf as conf
 
-# 1. Load LLaMA model and tokenizer
-model_name = "huggyllama/llama-7b"  # Using LLaMA-7B as an example. Adjust this based on your model.
-model = LlamaForSequenceClassification.from_pretrained(model_name, num_labels=2)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# 2. Configure LoRA parameters
-peft_config = LoraConfig(
-    task_type=TaskType.SEQ_CLS,  # Sequence classification task
-    inference_mode=False,        # We're training, not just inference
-    r=8,                         # Low-rank dimension (controls adaptation capacity)
-    lora_alpha=16,               # Scaling factor for LoRA
-    lora_dropout=0.1             # Dropout to prevent overfitting
-)
+def load_itrimodel(model_name, device="cuda"):
+    return ItriModel(model_name=model_name, device=device)
 
-# Apply LoRA to the LLaMA model
-model = get_peft_model(model, peft_config)
+def load_tokenizer(model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.pad_token = tokenizer.eos_token  # Assign eos_token as the pad token
+    return tokenizer
 
-# 3. Load dataset and preprocess (using IMDb dataset)
-dataset = load_dataset("imdb")
+def load_small_dataset(file_path, tokenizer, max_length=512):
+    """
+    Load the small dataset (4 examples) and tokenize for training.
+    """
+    data = load_and_format_jsonl(file_path)
+    raw_data = [{"question": entry.split("\n")[0].split(": ")[1],
+                 "context": entry.split("\n")[1].split(": ")[1],
+                 "answer": entry.split("\n")[2].split(": ")[1]}
+                for entry in data.split("\n\n") if entry.strip()]
 
-# Assign the eos_token as the padding token
-tokenizer.pad_token = tokenizer.eos_token
+    dataset = Dataset.from_dict(raw_data)
 
-# Tokenize the dataset with padding enabled
-def tokenize_function(example):
-    return tokenizer(example['text'], padding="max_length", truncation=True)
+    def preprocess_function(examples):
+        inputs = ["Question: " + q + " Context: " + c for q, c in zip(examples["question"], examples["context"])]
+        targets = examples["answer"]
+        model_inputs = tokenizer(inputs, max_length=max_length, padding="max_length", truncation=True)
+        labels = tokenizer(targets, max_length=max_length, padding="max_length", truncation=True)
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
 
-# Apply tokenization to the dataset
-tokenized_datasets = dataset.map(tokenize_function, batched=True)
+    return dataset.map(preprocess_function, batched=True)
 
-# Split dataset into train and test subsets
-train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))  # For fine-tuning, using a small subset
-test_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
+def configure_lora():
+    return LoraConfig(
+        task_type=TaskType.SEQ_2_SEQ_LM,
+        inference_mode=False,
+        r=4,  # Reduce rank dimension for smaller adaptations
+        lora_alpha=8,
+        lora_dropout=0.1
+    )
 
-# 4. Define training arguments
-training_args = TrainingArguments(
-    output_dir='./results_llama_lora',  # Directory for saving results
-    eval_strategy="epoch",              # Updated: Evaluation strategy per epoch
-    learning_rate=2e-5,                 # Learning rate for fine-tuning
-    per_device_train_batch_size=2,      # Batch size per device for training
-    per_device_eval_batch_size=2,       # Batch size per device for evaluation
-    num_train_epochs=3,                 # Number of fine-tuning epochs
-    weight_decay=0.01,                  # Weight decay to regularize the model
-    logging_dir='./logs_llama_lora',    # Directory for logging
-    save_total_limit=2,                 # Limit the number of saved model checkpoints
-    fp16=True                           # Enable mixed precision
-)
+def fine_tune_small_itrimodel(model, tokenizer, dataset, output_dir, save_dir):
+    """
+    Fine-tune the ItriModel with a very small dataset.
+    """
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        eval_strategy="no",               # Skip evaluation for small data
+        learning_rate=5e-5,               # Higher learning rate for few examples
+        per_device_train_batch_size=1,    # Batch size of 1
+        num_train_epochs=1,               # Only one epoch
+        weight_decay=0.0,                 # No regularization
+        logging_dir='./logs',             # Logging directory
+        save_total_limit=1,               # Save only one checkpoint
+        fp16=True                         # Enable mixed precision
+    )
 
-# 5. Create Trainer instance
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    eval_dataset=test_dataset,
-    tokenizer=tokenizer,
-)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=dataset,
+        tokenizer=tokenizer,
+    )
 
-# 6. Fine-tune the model with LoRA
-trainer.train()
+    trainer.train()
 
-# 7. Evaluate the fine-tuned LLaMA model
-results = trainer.evaluate()
-print(f"Evaluation Results: {results}")
+    # Save the fine-tuned model
+    model.save_model(save_dir)
 
-# 8. Save the fine-tuned model
-model.save_pretrained("./fine_tuned_llama_lora_model")
-tokenizer.save_pretrained("./fine_tuned_llama_lora_tokenizer")
+if __name__ == "__main__":
+    # Paths
+    model_name = "meta-llama/Llama-3.2-1B"  # Use smaller model
+    qa_jsonl_path = "./utils/submitQA/qa_abstract.jsonl"
+    output_dir = conf.results_path
+    save_dir = conf.model_path
 
-print("Fine-tuned LLaMA model and tokenizer saved successfully!")
+    # Load model and tokenizer
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    model = load_itrimodel(model_name, device=device)
+    tokenizer = load_tokenizer(model_name)
+
+    # Apply LoRA
+    peft_config = configure_lora()
+    model.model = get_peft_model(model.model, peft_config)
+
+    # Load and preprocess the small dataset
+    dataset = load_small_dataset(qa_jsonl_path, tokenizer)
+
+    # Fine-tune the model
+    fine_tune_small_itrimodel(model, tokenizer, dataset, output_dir, save_dir)
