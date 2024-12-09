@@ -5,13 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit Question, Answer, PMID, DOI, and Category</title>
   <style>
-    /* Custom styles to enlarge text areas */
-    textarea {
-      width: 100%;
-      height: 100px;
-      font-size: 16px;
-    }
-    input, select {
+    /* Style for the form and progress */
+    textarea, input, select {
       width: 100%;
       font-size: 16px;
     }
@@ -19,11 +14,30 @@
       max-width: 600px;
       margin: auto;
     }
+    .progress {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
 
   <h1>Submit Your Question, Answer, PMID, DOI, and Category</h1>
+
+  <div class="progress">
+    <h2>Progress Summary</h2>
+    <p>Total Papers (PMIDs): <span id="totalPapers">0</span></p>
+    <p>Total Q&As: <span id="totalQAs">0</span></p>
+    <p>Q&As by Category:</p>
+    <ul id="categoryList">
+      <li>Knowledge: <span id="knowledgeCount">0</span></li>
+      <li>Method: <span id="methodCount">0</span></li>
+      <li>Discussion: <span id="discussionCount">0</span></li>
+    </ul>
+  </div>
 
   <form id="qaForm" onsubmit="handleSubmit(event)">
     <label for="question">Question:</label><br>
@@ -51,12 +65,24 @@
   <div id="result"></div>
 
   <script>
+    async function fetchStats() {
+      const response = await fetch('/stats');
+      const stats = await response.json();
+
+      // Update the progress summary
+      document.getElementById('totalPapers').textContent = stats.total_papers;
+      document.getElementById('totalQAs').textContent = stats.total_qas;
+      document.getElementById('knowledgeCount').textContent = stats.categories.knowledge || 0;
+      document.getElementById('methodCount').textContent = stats.categories.method || 0;
+      document.getElementById('discussionCount').textContent = stats.categories.discussion || 0;
+    }
+
     async function handleSubmit(event) {
       event.preventDefault();
 
       const formData = new FormData(document.getElementById('qaForm'));
 
-      // Send the data to the server using Fetch API
+      // Send the data to the server
       const response = await fetch('/submit', {
         method: 'POST',
         body: formData
@@ -69,7 +95,13 @@
 
       // Clear the form
       document.getElementById('qaForm').reset();
+
+      // Refresh progress stats
+      fetchStats();
     }
+
+    // Fetch stats on page load
+    fetchStats();
   </script>
 
 </body>
