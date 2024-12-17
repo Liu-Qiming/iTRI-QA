@@ -27,7 +27,7 @@ lora_config = LoraConfig(
     bias="lora_only"
 )
 
-model_name = "meta-llama/Llama-3.2-3B"
+model_name = "meta-llama/Llama-3.2-1B"
 
 # TODO: Model Path
 model_path = "models/"
@@ -35,7 +35,7 @@ model_path = "models/"
 results_path = "results/"
 
 # TODO: Adapter Path
-adapter_path = "models/"
+adapter_path = "results/checkpoint-1875"
 
 # Directory stores all the templates
 template_path = "prompt/templates/"

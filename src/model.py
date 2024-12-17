@@ -1,4 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import PeftModel, PeftConfig
 import torch
 import os
 from abc import ABC, abstractmethod
@@ -36,18 +37,23 @@ class BaseLLMModel(ABC):
 
 
 class ItriModel(BaseLLMModel):
-    def __init__(self, model_name: str, device: str = None):
+    def __init__(self, model_name: str, adapter_path: str = None):
         """
-        Initialize the model, tokenizer, and apply performance optimizations.
+        Initialize the model, tokenizer, and optionally apply an adapter.
 
         Args:
-            model_name (str): Name of the model.
+            model_name (str): Name of the base model.
+            adapter_path (str, optional): Path to the adapter. Defaults to None.
             device (str): Device to load the model on. Defaults to "cuda" if available.
         """
         super().__init__(model_name)
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = self.load_tokenizer(model_name)
         self.model = self.load_model(model_name)
+
+        if adapter_path:
+            self.apply_adapter(adapter_path)
+
         self.apply_perf_optimizations()
 
     def load_tokenizer(self, model_name: str):
@@ -79,10 +85,19 @@ class ItriModel(BaseLLMModel):
 
         # Resize token embeddings if tokenizer is updated
         if len(self.tokenizer) > model.config.vocab_size:
-            model.resize_token_embeddings(len(self.tokenizer), mean_resizing=False)
-
+            model.resize_token_embeddings(len(self.tokenizer))
 
         return model
+
+    def apply_adapter(self, adapter_path: str):
+        """
+        Apply an adapter to the loaded model.
+
+        Args:
+            adapter_path (str): Path to the adapter to be applied.
+        """
+        print(f"Loading adapter from {adapter_path}...")
+        self.model = PeftModel.from_pretrained(self.model, adapter_path)
 
     def apply_perf_optimizations(self):
         """Enable performance optimizations to reduce memory usage."""
@@ -111,26 +126,19 @@ class ItriModel(BaseLLMModel):
             output = self.model.generate(
                 batch["input_ids"],
                 attention_mask=batch["attention_mask"],
-                max_new_tokens=100,
-                do_sample=True,
-                num_beams=2,
-                repetition_penalty=1.5,
-                no_repeat_ngram_size=2,
+                max_new_tokens=200,  # Increased from 128 to allow for longer responses
+                do_sample=True,  # Keep sampling for diversity
+                num_beams=5,  # Increased from 2 to explore a broader search space
+                temperature=0.7,  # Added to control randomness
+                top_k=50,  # Focus on the top 50 tokens
+                top_p=0.9,
                 early_stopping=True,
                 pad_token_id=self.tokenizer.pad_token_id
             )
 
         decoded_output = self.tokenizer.decode(output[0], skip_special_tokens=True)
 
-        # Extract the answer and remove template repeats
-        answer_start = decoded_output.rfind("# Answer:")
-        if answer_start != -1:
-            answer = decoded_output[answer_start + len("# Answer:"):].strip()
-        else:
-            answer = decoded_output.strip()
-
-        return answer
-
+        return decoded_output.strip()
 
     def save_model(self, base_save_path: str):
         """Save the model and tokenizer with versioning."""
