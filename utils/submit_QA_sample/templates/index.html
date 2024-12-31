@@ -24,6 +24,18 @@
 
   <h1>Submit Your Question, Answer, PMID, DOI, and Category</h1>
 
+  <div class="progress">
+    <h2>Progress Summary</h2>
+    <p>Total Papers (PMIDs): <span id="totalPapers">0</span></p>
+    <p>Total Q&As: <span id="totalQAs">0</span></p>
+    <p>Q&As by Category:</p>
+    <ul id="categoryList">
+      <li>Knowledge: <span id="knowledgeCount">0</span></li>
+      <li>Method: <span id="methodCount">0</span></li>
+      <li>Discussion: <span id="discussionCount">0</span></li>
+    </ul>
+  </div>
+
   <form id="qaForm" onsubmit="handleSubmit(event)">
     <label for="question">Question:</label><br>
     <textarea id="question" name="question" required></textarea><br>
