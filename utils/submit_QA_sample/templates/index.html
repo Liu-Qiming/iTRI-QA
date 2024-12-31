@@ -14,12 +14,9 @@
       max-width: 600px;
       margin: auto;
     }
-    .progress {
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    .error {
+      color: red;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -27,30 +24,22 @@
 
   <h1>Submit Your Question, Answer, PMID, DOI, and Category</h1>
 
-  <div class="progress">
-    <h2>Progress Summary</h2>
-    <p>Total Papers (PMIDs): <span id="totalPapers">0</span></p>
-    <p>Total Q&As: <span id="totalQAs">0</span></p>
-    <p>Q&As by Category:</p>
-    <ul id="categoryList">
-      <li>Knowledge: <span id="knowledgeCount">0</span></li>
-      <li>Method: <span id="methodCount">0</span></li>
-      <li>Discussion: <span id="discussionCount">0</span></li>
-    </ul>
-  </div>
-
   <form id="qaForm" onsubmit="handleSubmit(event)">
     <label for="question">Question:</label><br>
-    <textarea id="question" name="question" required></textarea><br><br>
+    <textarea id="question" name="question" required></textarea><br>
+    <span class="error" id="questionError"></span><br>
 
     <label for="answer">Answer:</label><br>
-    <textarea id="answer" name="answer" required></textarea><br><br>
+    <textarea id="answer" name="answer" required></textarea><br>
+    <span class="error" id="answerError"></span><br>
 
     <label for="pmid">PMID:</label><br>
-    <input type="text" id="pmid" name="pmid" required><br><br>
+    <input type="text" id="pmid" name="pmid" required><br>
+    <span class="error" id="pmidError"></span><br>
 
     <label for="doi">DOI:</label><br>
-    <input type="text" id="doi" name="doi" required><br><br>
+    <input type="text" id="doi" name="doi" required><br>
+    <span class="error" id="doiError"></span><br>
 
     <label for="category">Category:</label><br>
     <select id="category" name="category" required>
@@ -65,20 +54,50 @@
   <div id="result"></div>
 
   <script>
-    async function fetchStats() {
-      const response = await fetch('/stats');
-      const stats = await response.json();
+    function validateForm() {
+      let isValid = true;
 
-      // Update the progress summary
-      document.getElementById('totalPapers').textContent = stats.total_papers;
-      document.getElementById('totalQAs').textContent = stats.total_qas;
-      document.getElementById('knowledgeCount').textContent = stats.categories.knowledge || 0;
-      document.getElementById('methodCount').textContent = stats.categories.method || 0;
-      document.getElementById('discussionCount').textContent = stats.categories.discussion || 0;
+      // Clear previous errors
+      document.querySelectorAll('.error').forEach(el => el.textContent = '');
+
+      // Validate question
+      const question = document.getElementById('question').value.trim();
+      if (question === '') {
+        document.getElementById('questionError').textContent = 'Question cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate answer
+      const answer = document.getElementById('answer').value.trim();
+      if (answer === '') {
+        document.getElementById('answerError').textContent = 'Answer cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate PMID
+      const pmid = document.getElementById('pmid').value.trim();
+      if (pmid === '') {
+        document.getElementById('pmidError').textContent = 'PMID cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate DOI
+      const doi = document.getElementById('doi').value.trim();
+      if (doi === '') {
+        document.getElementById('doiError').textContent = 'DOI cannot be empty.';
+        isValid = false;
+      }
+
+      return isValid;
     }
 
     async function handleSubmit(event) {
       event.preventDefault();
+
+      // Perform frontend validation
+      if (!validateForm()) {
+        return;
+      }
 
       const formData = new FormData(document.getElementById('qaForm'));
 
@@ -98,6 +117,18 @@
 
       // Refresh progress stats
       fetchStats();
+    }
+
+    async function fetchStats() {
+      const response = await fetch('/stats');
+      const stats = await response.json();
+
+      // Update the progress summary
+      document.getElementById('totalPapers').textContent = stats.total_papers;
+      document.getElementById('totalQAs').textContent = stats.total_qas;
+      document.getElementById('knowledgeCount').textContent = stats.categories.knowledge || 0;
+      document.getElementById('methodCount').textContent = stats.categories.method || 0;
+      document.getElementById('discussionCount').textContent = stats.categories.discussion || 0;
     }
 
     // Fetch stats on page load

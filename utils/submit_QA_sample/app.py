@@ -13,11 +13,15 @@ def index():
 
 @app.route('/submit', methods=['POST'])
 def submit_qa():
-    question = request.form['question']
-    answer = request.form['answer']
-    pmid = request.form['pmid']
-    doi = request.form['doi']
-    category = request.form['category']
+    question = request.form['question'].strip()
+    answer = request.form['answer'].strip()
+    pmid = request.form['pmid'].strip()
+    doi = request.form['doi'].strip()
+    category = request.form['category'].strip()
+
+    # Backend validation
+    if not question or not answer or not pmid or not doi:
+        return jsonify({'status': 'error', 'message': 'All fields (Question, Answer, PMID, DOI) must be filled.'}), 400
 
     qa_data = {
         "question": question,
@@ -27,11 +31,13 @@ def submit_qa():
         "category": category
     }
 
-    # Write the data to JSONL file
-    with open(FILE_PATH, 'a') as file:
-        file.write(json.dumps(qa_data) + '\n')
-
-    return jsonify({'status': 'success', 'message': 'Q&A saved successfully!'})
+    try:
+        with open(FILE_PATH, 'a') as file:
+            file.write(json.dumps(qa_data) + '\n')
+        return jsonify({'status': 'success', 'message': 'Q&A saved successfully!'})
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+        return jsonify({'status': 'error', 'message': 'Failed to save Q&A.'}), 500
 
 @app.route('/stats', methods=['GET'])
 def get_stats():
