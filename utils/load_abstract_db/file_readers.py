@@ -35,28 +35,25 @@ def read_bib_file(bib_file):
 
     return pd.DataFrame(bib_entries)
 
-def read_json_file(json_file):
+
+def read_output_yaml_file(yaml_file):
     """
-    Read a JSON file and return a pandas DataFrame.
+    Read a YAML file and return abstracts and DOIs.
 
     Parameters:
-        json_file (str): Path to the JSON file.
+        yaml_file (str): Path to the YAML file.
 
     Returns:
-        pd.DataFrame: DataFrame containing JSON data.
+        list: A list of dictionaries containing abstracts and DOIs.
     """
-    if not os.path.exists(json_file):
-        raise FileNotFoundError(f"The file {json_file} does not exist.")
+    with open(yaml_file, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
 
-    with open(json_file, 'r', encoding='utf-8') as f:
-        try:
-            json_data = json.load(f)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Error parsing the JSON file: {e}")
+    results = []
+    for entry in data:
+        abstract = entry.get('abstract', None)
+        doi = entry.get('doi', None)
+        if abstract or doi:
+            results.append({'abstract': abstract, 'doi': doi})
 
-    if isinstance(json_data, list):
-        return pd.DataFrame(json_data)
-    elif isinstance(json_data, dict):
-        return pd.DataFrame([{"key": key, **value} for key, value in json_data.items()])
-    else:
-        raise ValueError("Unsupported JSON format. Expected a list or dictionary.")
+    return results
