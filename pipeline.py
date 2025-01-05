@@ -2,7 +2,7 @@ import os
 import random
 import json
 from transformers import Trainer, TrainingArguments, AutoModelForCausalLM, AutoTokenizer, IntervalStrategy
-from datasets import Dataset, load_metric
+from datasets import Dataset
 from src.model import ItriModel
 from src.utils import load_jsonl_as_dict
 from prompt.prompt_manager import PromptManager
@@ -56,7 +56,7 @@ def configure_lora():
     return LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         inference_mode=False,
-        r=8,  # Increase LoRA rank for better task-specific learning
+        r=16,  # Increase LoRA rank for better task-specific learning
         lora_alpha=32,  # Higher scaling factor for small datasets
         lora_dropout=0.1  # Slightly higher dropout to prevent overfitting
     )
@@ -109,7 +109,7 @@ def evaluate_and_log_results(trainer, eval_dataset, tokenizer, result_path, qa_s
 def main():
     model_names = ["meta-llama/Llama-3.2-1B", "meta-llama/Llama-3.2-3B"]
     sample_sizes = [3, 10, 25, 50]
-    num_epochs = 10
+    num_epochs = 500
     prompt_manager = PromptManager()
 
     full_train_data = load_jsonl_as_dict(data_path)
@@ -129,7 +129,7 @@ def main():
                 for item in sampled_data:
                     f.write(json.dumps(item) + '\n')
             train_dataset = prepare_dataset(temp_jsonl_path, tokenizer, prompt_manager)
-            experiment_dir = os.path.join(output_dir, f"{model_name.replace('/', '_')}_QA{qa_size}")
+            experiment_dir = os.path.join(output_dir, f"{model_name.replace('/', '_')}_r16alpha32_QA{qa_size}")
             os.makedirs(experiment_dir, exist_ok=True)
             trainer = fine_tune_model(model, tokenizer, train_dataset, eval_dataset, output_dir, experiment_dir, num_epochs)
             os.remove(temp_jsonl_path)
