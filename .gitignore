@@ -17,3 +17,6 @@ models/*
 .DS_Store
 *.log
 *.log.*
+
+# logs
+/log

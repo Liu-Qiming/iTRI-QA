@@ -35,7 +35,7 @@ model_path = "models/"
 results_path = "results/"
 
 # TODO: Adapter Path
-adapter_path = "results/checkpoint-1875"
+adapter_path = "models/experiment/meta-llama_Llama-3.2-3B_r16alpha32_Fixed_5epoch_QA25"
 
 # Directory stores all the templates
 template_path = "prompt/templates/"

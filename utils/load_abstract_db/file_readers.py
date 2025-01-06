@@ -2,6 +2,8 @@ import os
 from pybtex.database import parse_string
 import pandas as pd
 import json
+import yaml
+
 
 def read_bib_file(bib_file):
     """
