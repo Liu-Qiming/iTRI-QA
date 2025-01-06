@@ -7,7 +7,7 @@ model_config = {
     "top_k": 50,
     "max_new_tokens": 120,
     "do_sample": True,
-    "num_beams": 4,
+    "num_beams": 2,
     "early_stopping": True,
 }
 
@@ -32,14 +32,13 @@ model_name = "meta-llama/Llama-3.2-1B"
 # TODO: Model Path
 model_path = "models/"
 
-# TODO: Adapter Path
-adapter_path = "models/"
+results_path = "results/"
 
-# TODO: Template Path
+# TODO: Adapter Path
+adapter_path = "models/experiment/meta-llama_Llama-3.2-3B_r16alpha32_Fixed_5epoch_QA25"
+
+# Directory stores all the templates
 template_path = "prompt/templates/"
 
-# Context Path
-context_path = "data/context/Cholesterol - Low - Density Lipoprotein (LDL) & Triglycerides:2015-2016.csv"
-
-# Query Path
-query_path = "data/query/query.json"
+# QA Data Path
+QA_data_path = "data/QA_data/qa_abstract.jsonl"

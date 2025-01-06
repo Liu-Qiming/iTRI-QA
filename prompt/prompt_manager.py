@@ -18,27 +18,11 @@ class PromptManager:
         The directory containing the Jinja2 templates.
     env : jinja2.Environment
         The Jinja2 environment for loading and rendering templates.
-    
-    Methods:
-    --------
-    load_template(template_name: str) -> jinja2.Template:
-        Loads a Jinja2 template by name.
-        
-    render_prompt(template_name: str, variables: dict) -> str:
-        Renders the specified template with provided variables.
-    
-    set_template_dir(template_dir: str) -> None:
-        Sets a new directory for loading templates.
     """
     
     def __init__(self):
         """
         Initializes the PromptManager with a directory for Jinja2 templates.
-
-        Parameters:
-        -----------
-        template_dir : str
-            Path to the directory containing Jinja2 templates from config file.
         """
         self.template_dir = conf.template_path
 
@@ -50,21 +34,6 @@ class PromptManager:
     def load_template(self, template_name: str):
         """
         Loads a Jinja2 template by name.
-
-        Parameters:
-        -----------
-        template_name : str
-            The name of the template to load.
-
-        Returns:
-        --------
-        template : jinja2.Template
-            The loaded Jinja2 template.
-        
-        Raises:
-        -------
-        TemplateNotFound:
-            If the template is not found in the directory.
         """
         try:
             template = self.env.get_template(template_name)
@@ -75,30 +44,16 @@ class PromptManager:
     def render_prompt(self, template_name: str, variables: dict) -> str:
         """
         Renders a prompt from a template with given variables.
-
-        Parameters:
-        -----------
-        template_name : str
-            The name of the template to render.
-        variables : dict
-            A dictionary of variables to substitute into the template.
-
-        Returns:
-        --------
-        rendered_prompt : str
-            The rendered prompt as a string.
         """
-        template = self.load_template(template_name)
-        return template.render(variables)
+        try:
+            template = self.load_template(template_name)
+            return template.render(variables)
+        except Exception as e:
+            raise ValueError(f"Error rendering template {template_name}: {e}")
     
     def set_template_dir(self, template_dir: str) -> None:
         """
         Updates the template directory to a new path.
-
-        Parameters:
-        -----------
-        template_dir : str
-            The new directory to set for loading templates.
         """
         if not os.path.isdir(template_dir):
             raise ValueError(f"Template directory {template_dir} does not exist.")
@@ -109,10 +64,5 @@ class PromptManager:
     def list_templates(self):
         """
         Lists all available templates in the current template directory.
-
-        Returns:
-        --------
-        list of str:
-            List of template file names in the template directory.
         """
         return [f for f in os.listdir(self.template_dir) if f.endswith(".j2")]

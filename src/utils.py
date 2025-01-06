@@ -20,6 +20,7 @@ def read_csv_file(file_path, num_rows=5):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
     return df
 
+
 def format_dataframe(df):
     """
     Formats a DataFrame by prepending column names to their corresponding values.
@@ -38,6 +39,7 @@ def format_dataframe(df):
     formatted_output = "\n\n".join(formatted_rows)
     return formatted_output
 
+
 def process_csv_data(file_path, num_rows=5):
     """
     Reads and formats the first `num_rows` rows from the CSV file.
@@ -53,10 +55,47 @@ def process_csv_data(file_path, num_rows=5):
     formatted_output = format_dataframe(df)
     return formatted_output
 
-def load_json_data(file_path):
-    """Load data from a JSON file."""
+
+def load_and_format_json(file_path):
+    """
+    Load and format data from a JSON file.
+    
+    Parameters:
+    - file_path (str): Path to the JSON file.
+    
+    Returns:
+    - str: A formatted string of the JSON data.
+    """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
+    
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return data
+    
+    # Format the JSON data
+    formatted_output = "\n".join([f"{key}: {value}" for key, value in data.items()])
+    return formatted_output
+
+
+def load_jsonl_as_dict(file_path):
+    """
+    Load data from a JSONL file into a list of dictionaries.
+    
+    Parameters:
+    - file_path (str): Path to the JSONL file.
+    
+    Returns:
+    - list[dict]: A list of dictionaries where each dictionary represents a JSONL entry.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    
+    data_list = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():  # Skip empty lines
+                entry = json.loads(line)
+                data_list.append(entry)
+    
+    return data_list
+

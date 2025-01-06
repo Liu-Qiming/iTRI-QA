@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Question, Answer, PMID, DOI, and Category</title>
+  <style>
+    /* General styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #f8f9fa;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    textarea, input, select {
+      font-size: 16px;
+      margin-bottom: 5px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    textarea {
+      width: 95%;
+      height: 100px;
+      resize: vertical; /* Allows vertical resizing only */
+    }
+
+    input, select {
+      width: 95%;
+      height: 30px;
+    }
+
+    form {
+      width: 95%; /* Makes the form fill most of the page */
+      max-width: 1000px; /* Limit the width for larger screens */
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Progress bar container */
+    .progress-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 90%;
+      max-width: 1000px; /* Same as the form */
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border: 2px solid #007bff;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-container h2 {
+      margin: 0 0 10px 0;
+    }
+
+    .progress-container p {
+      margin: 5px 0;
+    }
+
+    .progress-container ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .progress-container ul li {
+      margin: 5px 0;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Submit Your Question, Answer, PMID, DOI, and Category</h1>
+
+  <!-- Progress bar -->
+  <div class="progress-container">
+    <h2>Progress Summary</h2>
+    <p>Total Papers (PMIDs): <span id="totalPapers">0</span></p>
+    <p>Total Q&As: <span id="totalQAs">0</span></p>
+    <p>Q&As by Category:</p>
+    <ul>
+      <li>Knowledge: <span id="knowledgeCount">0</span></li>
+      <li>Method: <span id="methodCount">0</span></li>
+      <li>Discussion: <span id="discussionCount">0</span></li>
+    </ul>
+  </div>
+
+  <!-- Form for data entry -->
+  <form id="qaForm" onsubmit="handleSubmit(event)">
+    <label for="question">Question:</label><br>
+    <textarea id="question" name="question" required></textarea><br>
+    <span class="error" id="questionError"></span><br>
+
+    <label for="answer">Answer:</label><br>
+    <textarea id="answer" name="answer" required></textarea><br>
+    <span class="error" id="answerError"></span><br>
+
+    <label for="pmid">PMID:</label><br>
+    <input type="text" id="pmid" name="pmid" required><br>
+    <span class="error" id="pmidError"></span><br>
+
+    <label for="doi">DOI:</label><br>
+    <input type="text" id="doi" name="doi" required><br>
+    <span class="error" id="doiError"></span><br>
+
+    <label for="category">Category:</label><br>
+    <select id="category" name="category" required>
+      <option value="knowledge">Knowledge</option>
+      <option value="method">Method</option>
+      <option value="discussion">Discussion</option>
+    </select><br><br>
+
+    <input type="submit" value="Submit">
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    function validateForm() {
+      let isValid = true;
+
+      // Clear previous errors
+      document.querySelectorAll('.error').forEach(el => el.textContent = '');
+
+      // Validate question
+      const question = document.getElementById('question').value.trim();
+      if (question === '') {
+        document.getElementById('questionError').textContent = 'Question cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate answer
+      const answer = document.getElementById('answer').value.trim();
+      if (answer === '') {
+        document.getElementById('answerError').textContent = 'Answer cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate PMID
+      const pmid = document.getElementById('pmid').value.trim();
+      if (pmid === '') {
+        document.getElementById('pmidError').textContent = 'PMID cannot be empty.';
+        isValid = false;
+      }
+
+      // Validate DOI
+      const doi = document.getElementById('doi').value.trim();
+      if (doi === '') {
+        document.getElementById('doiError').textContent = 'DOI cannot be empty.';
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+
+      // Perform frontend validation
+      if (!validateForm()) {
+        return;
+      }
+
+      const formData = new FormData(document.getElementById('qaForm'));
+
+      // Send the data to the server
+      const response = await fetch('/submit', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      // Display the result message
+      document.getElementById('result').innerHTML = `<p>${result.message}</p>`;
+
+      // Clear the form
+      document.getElementById('qaForm').reset();
+
+      // Refresh progress stats
+      fetchStats();
+    }
+
+    async function fetchStats() {
+      const response = await fetch('/stats');
+      const stats = await response.json();
+
+      // Update the progress summary
+      document.getElementById('totalPapers').textContent = stats.total_papers;
+      document.getElementById('totalQAs').textContent = stats.total_qas;
+      document.getElementById('knowledgeCount').textContent = stats.categories.knowledge || 0;
+      document.getElementById('methodCount').textContent = stats.categories.method || 0;
+      document.getElementById('discussionCount').textContent = stats.categories.discussion || 0;
+    }
+
+    // Fetch stats on page load
+    fetchStats();
+  </script>
+
+</body>
+</html>
