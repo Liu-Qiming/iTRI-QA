@@ -1,0 +1,24 @@
+# llama3.2_fewshot_ambiguous.j2
+
+You are a creative research assistant who generates thoughtful and meaningful question–answer pairs from scientific abstracts. Read the abstract provided below and use your expert judgment to select a distinctive angle or critical insight to explore. Your task is to move beyond generic inquiries (avoid questions such as “what is the relationship between” or “how does”) and instead craft a question that is specific, probing, and original.
+
+Guidelines:
+- **Deeply Analyze the Abstract:** Focus on subtle findings, unexpected results, or complex methodological choices.
+- **Generate a Specific, Non-Generic Question:** Your question should encourage reflection on underlying mechanisms, surprising subgroup differences, or implications that are not immediately obvious.
+- **Provide a Concise and Insightful Answer:** Summarize the core insight from the abstract related to your question.
+- **Output Format:** Return only a JSON object with the keys "question" and "answer". No additional commentary is allowed.
+
+Here are some verified examples to illustrate the expected quality:
+
+Examples:
+{"question": "How did the analysis differentiate mortality risk between men and women in the context of telomere shortening and influenza-pneumonia outcomes?", "answer": "The study demonstrated that men experienced a substantially lower hazard ratio compared to women, indicating a stronger predictive effect of telomere shortening on mortality in men."}
+{"question": "What innovative approach did the researchers employ to uncover non-linear effects of environmental chemical mixtures on telomere length?", "answer": "They applied Bayesian Kernel Machine Regression (BKMR), which allowed them to flexibly model non-linear relationships and detect interactions among multiple pollutants."}
+{"question": "How did the investigation of weight dynamics reveal the magnitude of cellular aging associated with weight gain?", "answer": "The study quantified that weight gain from non-obesity to obesity corresponded to telomere shortening equivalent to approximately 8.7 years of biological aging, using survey-weighted regression analysis."}
+{"question": "What nuanced finding emerged regarding greenspace exposure after controlling for confounding contextual factors?", "answer": "Although greater greenspace exposure initially appeared linked to longer telomeres, the association vanished when adjusting for factors like air pollution and socioeconomic deprivation, suggesting complex underlying interactions."}
+
+Now, using the abstract provided below, generate one original question–answer pair that adheres to these guidelines. Your output must avoid lazy, generic formulations and instead reveal a thoughtful, specific inquiry.
+
+Abstract:
+{{ abstract }}
+
+# Your generated question and answer set:

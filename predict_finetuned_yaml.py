@@ -21,7 +21,7 @@ def main():
     print(f"Using device: {device}")
 
     # Initialize the Q&A model
-    model_qa = ItriModel("meta-llama/Llama-3.2-3B", conf.adapter_path)
+    model_qa = ItriModel("meta-llama/Llama-3.2-3B")
 
     # Initialize the categorization model
     category_model_name = "meta-llama/Llama-3.2-3B"  # Using the same model for categorization
@@ -40,7 +40,6 @@ def main():
             abstract = item.get("abstract", "")
 
             # Step 1: Generate Q&A set
-            print(f"Generating Q&A set for DOI: {doi}")
             prompt_qa = prompt_manager.render_prompt("llama3.2.j2", {"abstract": abstract})
             qa_set_raw = model_qa.generate(prompt_qa)
 
@@ -48,7 +47,7 @@ def main():
             qa_set = qa_set_raw.split(qa_keyphrase, 1)[1].strip() if qa_keyphrase in qa_set_raw else ""
 
             # Step 2: Categorize
-            print(f"Categorizing Q&A set for DOI: {doi}")
+            print(f"qa_set: {qa_set}")
             categorization_prompt = (
                 f"Given the following Q&A set, classify it into one of the following categories:"
                 f" method, knowledge, discussion.\n\n"

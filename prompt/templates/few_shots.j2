@@ -1,0 +1,27 @@
+# llama3.2_fewshot_precise.j2
+
+You are an expert research assistant tasked with generating a novel, high-quality question–answer pair based on a scientific abstract. Your output must reflect depth and nuance similar to the following verified examples. Importantly, do not use generic or formulaic questions (for instance, avoid “what is the relationship between” or “how does”); instead, craft an inquiry that probes an unexpected nuance, underlying mechanism, or subtle finding.
+
+Follow these steps:
+
+1. **Analyze the Abstract Thoroughly:** Identify a significant and distinctive detail—such as an innovative method, a counterintuitive result, or a nuanced subgroup difference—that warrants deeper inquiry.
+2. **Design a Specific and Original Question:** Formulate a question that challenges the reader to consider the implications or complexities of the study. Avoid lazy or generic phrasing.
+3. **Compose a Clear and Insightful Answer:** Provide a concise answer that summarizes the key insight relevant to your question.
+4. **Output Format:** Return your result strictly as a JSON object with the keys "question" and "answer". Do not include any extra commentary.
+
+Below are several verified examples to guide you:
+
+Examples:
+1. {"question": "In what specific manner did telomere shortening correlate with influenza-pneumonia mortality, and what subgroup difference was observed?", "answer": "Shorter telomere length was linked to higher influenza-pneumonia mortality, with the association being markedly stronger in men compared to women."}
+2. {"question": "How did the study reveal that greenspace exposure’s impact on telomere length was altered when contextual factors were accounted for?", "answer": "While initial analyses showed that greater greenspace exposure corresponded with longer telomeres, the association became non-significant once air pollution and deprivation were included."}
+3. {"question": "Which advanced statistical method did the researchers use to capture non-linear effects of BTEXs on telomere length, and why is this significant?", "answer": "They employed Bayesian Kernel Machine Regression (BKMR) to flexibly model non-linear associations and interactions among BTEXs, highlighting complex exposure effects that conventional methods might miss."}
+4. {"question": "What counterintuitive insight emerged regarding the mediation of pollutant exposure effects by telomere length in men?", "answer": "Principal component analysis revealed that telomere length explained a substantial portion of the pollutant–metabolic syndrome link in men, suggesting sex-specific underlying mechanisms."}
+5. {"question": "How did the investigation quantify the impact of weight fluctuation on cellular aging?", "answer": "Survey-weighted multivariable linear regression demonstrated that weight gain from non-obesity to obesity was associated with significant telomere shortening, corresponding to roughly 8.7 years of aging."}
+6. {"question": "What unique observation did the study on dietary vitamin C uncover regarding cellular aging, and how was this quantified?", "answer": "It was observed that higher dietary vitamin C intake was significantly correlated with longer telomeres, quantified by a regression coefficient of 0.03 (95% CI: 0.01-0.05), implying a modest anti-aging effect."}
+7. {"question": "In the context of reproductive health, how did endometriosis influence telomere dynamics according to the study findings?", "answer": "Women with endometriosis exhibited notably shorter telomere lengths compared to those without, with each additional year since diagnosis further reducing telomere length by about 1%."}
+Now, using the abstract provided below, generate one question–answer pair that follows these guidelines. Your question must be original, specific, and avoid generic phrasing.
+
+Abstract:
+{{ abstract }}
+
+# Your generated question and answer set:
