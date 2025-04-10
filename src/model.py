@@ -26,7 +26,7 @@ class BaseLLMModel(ABC):
         pass
 
     @abstractmethod
-    def generate(self, input_text: str):
+    def generate(self, input_text: str, config=None):
         """Generate text based on input."""
         pass
 
@@ -71,16 +71,8 @@ class ItriModel(BaseLLMModel):
         if not hasattr(torch.nn.Parameter, "SCB"):
             setattr(torch.nn.Parameter, "SCB", None)
 
-        quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_enable_fp32_cpu_offload=True  # Offload unsupported layers to CPU if needed
-        )
-
         model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map="auto",
-            quantization_config=quantization_config,
-            trust_remote_code=True  # Enable custom model implementations
+            model_name
         )
 
         # Resize token embeddings if tokenizer is updated
@@ -103,7 +95,7 @@ class ItriModel(BaseLLMModel):
         """Enable performance optimizations to reduce memory usage."""
         self.model.gradient_checkpointing_enable()  # Save memory during training/inference
 
-    def generate(self, prompt: str):
+    def generate(self, prompt: str, config=None):
         """
         Generate an answer using the provided prompt.
 
@@ -113,16 +105,25 @@ class ItriModel(BaseLLMModel):
         Returns:
             str: The generated answer.
         """
+        # Tokenize the input prompt
         inputs = self.tokenizer(
             prompt,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=8192
+            return_tensors="pt"
         )
+        # Move input tensors to the same device as the model
         batch = {k: v.to(self.device) for k, v in inputs.items()}
 
-        with torch.amp.autocast(device_type="cuda" if self.device == "cuda" else "cpu", enabled=self.device == "cuda"):
+        # Ensure the model is on the correct device
+        self.model.to(self.device)
+
+        # Generate output
+        if config:
+            output = self.model.generate(
+                batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+                **config
+            )
+        else:
             output = self.model.generate(
                 batch["input_ids"],
                 attention_mask=batch["attention_mask"],
@@ -136,6 +137,7 @@ class ItriModel(BaseLLMModel):
                 pad_token_id=self.tokenizer.pad_token_id
             )
 
+        # Decode the output and return the result
         decoded_output = self.tokenizer.decode(output[0], skip_special_tokens=True)
 
         return decoded_output.strip()
