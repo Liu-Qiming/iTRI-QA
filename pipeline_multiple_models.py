@@ -43,7 +43,8 @@ def main():
                 prompt_question = (
                     "You are a creative research assistant who generates thoughtful and meaningful questions from scientific abstracts. "
                     "Only use the abstract provided below. Do not invent or assume information. "
-                    "Craft a specific, probing, and original question based strictly on the abstract.\n\n"
+                    "Craft a specific, probing, and original question based strictly on the abstract. "
+                    "Do NOT generate multiple-choice questions, Yes/No, True/False, Selection, or simple factual questions.\n\n"
                     f"Abstract:\n{abstract}\n\n{anchor_q}"
                 )
                 question_config = {
