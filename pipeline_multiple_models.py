@@ -48,7 +48,7 @@ def main():
                     f"Abstract:\n{abstract}\n\n{anchor_q}"
                 )
                 question_config = {
-                    "max_new_tokens": 100,
+                    "max_new_tokens": 50,
                     "temperature": 0.7,
                     "top_k": 50
                 }
@@ -64,7 +64,7 @@ def main():
                     f"Question: {question_text}\n\n{anchor_a}"
                 )
                 answer_config = {
-                    "max_new_tokens": 150,
+                    "max_new_tokens": 100,
                     "temperature": 0.6,
                     "top_k": 40
                 }
