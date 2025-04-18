@@ -105,22 +105,32 @@ def main():
     val_ds = val_ds.map(tok_fn, remove_columns=val_ds.column_names)
     train_ds.set_format("torch"); val_ds.set_format("torch")
 
-    targs = TrainingArguments(
+    kwargs = dict(
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         learning_rate=args.lr,
-        logging_steps=25,
         fp16=(args.bits == 16),
-        evaluation_strategy="epoch",
+        logging_steps=25,
         save_strategy="epoch",
+        # old versions need this instead of evaluation_strategy
+        # eval will still run each epoch because we pass eval_dataset to Trainer
+        save_total_limit=1,
+        seed=args.seed,
         load_best_model_at_end=True,
         metric_for_best_model="loss",
         gradient_accumulation_steps=4,
-        save_total_limit=1,
-        seed=args.seed,
     )
+
+    # only add evaluation_strategy if present in this transformers version
+    from inspect import signature
+    if "evaluation_strategy" in signature(TrainingArguments).parameters:
+        kwargs["evaluation_strategy"] = "epoch"
+    else:
+        kwargs["evaluate_during_training"] = True  # fallback for v<4.3
+
+    targs = TrainingArguments(**kwargs)
 
     trainer = Trainer(
         model=model,
