@@ -8,12 +8,10 @@ from src.model import ItriModel
 import src.conf as conf
 from utils.load_abstract_db.file_readers import read_output_yaml_file
 
-
 def extract_after_anchor(output_text, anchor):
     if anchor in output_text:
         return output_text.split(anchor, 1)[1].strip()
     return output_text.strip()
-
 
 def main():
     parser = argparse.ArgumentParser(description="Optimized ItriModel Pipeline for Medical Q&A and Categorization")
@@ -27,6 +25,7 @@ def main():
     model_question = ItriModel("meta-llama/Llama-3.2-3B")
     model_answer = ItriModel("tiiuae/Falcon3-3B-Instruct")
     model_category = ItriModel("meta-llama/Llama-3.2-3B")
+
     try:
         yaml_data = read_output_yaml_file(args.yaml_path)
         random.shuffle(yaml_data)
@@ -41,11 +40,12 @@ def main():
                 # Step 1: Generate Question
                 anchor_q = "Question:"
                 prompt_question = (
-                    "You are a creative research assistant who generates thoughtful and meaningful questions from scientific abstracts. "
-                    "Only use the abstract provided below. Do not invent or assume information. "
-                    "Craft a specific, probing, and original question based strictly on the abstract. "
-                    "Do NOT generate multiple-choice questions, Yes/No, True/False, Selection, or simple factual questions.\n\n"
-                    f"Abstract:\n{abstract}\n\n{anchor_q}"
+                    "You are a creative research assistant who generates thoughtful and meaningful questions from one or more scientific abstracts. "
+                    "Only use the abstracts provided below. Do not invent or assume information. "
+                    "Craft a specific, probing, and original question that arises strictly from these abstracts. "
+                    "Do NOT generate multiple-choice, yes/no, true/false, or simple factual questions.\n\n"
+                    f"Here are the abstracts:\n{abstract}\n\n"
+                    f"{anchor_q}"
                 )
                 question_config = {
                     "max_new_tokens": 50,
@@ -58,10 +58,12 @@ def main():
                 # Step 2: Generate Answer
                 anchor_a = "Answer:"
                 prompt_answer = (
-                    "You are an expert research assistant. Based on the scientific abstract and the question below, provide a concise and insightful answer. "
-                    "Base your response strictly on the content of the abstract. If the abstract does not contain enough information, respond with 'N/A'\n\n"
-                    f"Abstract:\n{abstract}\n\n"
-                    f"Question: {question_text}\n\n{anchor_a}"
+                    "You are an expert research assistant. Below, you have one or more scientific abstracts followed by a question. "
+                    "Provide a concise and insightful answer based only on the provided abstracts. If the abstracts do not contain enough information, respond with 'N/A'. "
+                    "Do not invent or assume facts beyond what the abstracts state.\n\n"
+                    f"Here are the abstracts:\n{abstract}\n\n"
+                    f"Question: {question_text}\n\n"
+                    f"{anchor_a}"
                 )
                 answer_config = {
                     "max_new_tokens": 100,
@@ -71,11 +73,37 @@ def main():
                 answer_text = model_answer.generate(prompt_answer, answer_config)
                 answer_text = extract_after_anchor(answer_text, anchor_a)
 
+                # --- RE-EVALUATION IF ANSWER CONTAINS 'N/A' ---
+                while "N/A" not in answer_text:
+                    anchor_re = "Revised answer:"
+                    reevaluation_prompt = (
+                        "It appears your answer may be incomplete or marked as 'N/A'. "
+                        "Please re-check the abstracts carefully to see if there's any evidence to provide a more informative answer. "
+                        "If there's truly no information in the abstracts to answer, confirm with 'N/A'.\n\n"
+                        "You are an expert research assistant. Below, you have one or more scientific abstracts followed by a question. "
+                        "Provide a concise and insightful answer based only on the provided abstracts. "
+                        "Do not invent or assume facts beyond what the abstracts state.\n\n"
+                        f"Here are the abstracts:\n{abstract}\n\n"
+                        f"Question: {question_text}\n\n"
+                        f"{anchor_re}"
+                    )
+                    reeval_config = {
+                        "max_new_tokens": 100,
+                        "temperature": 0.6,
+                        "top_k": 40
+                    }
+                    revised_answer_text = model_answer.generate(reevaluation_prompt, reeval_config)
+                    revised_answer_text = extract_after_anchor(revised_answer_text, anchor_re).strip()
+
+                # If the second attempt does not contain 'N/A', we assume it's a better answer
+                answer_text = revised_answer_text
+
                 # Step 3: Categorization
                 anchor_c = "Category (choose only from method, knowledge, discussion):"
                 categorization_prompt = (
                     "You are a scientific reviewer. Given the following Q&A pair, classify the type of insight provided as one of: method, knowledge, or discussion. "
-                    "Choose the category that best fits the content of the answer.\n\n"
+                    "Choose the category that best fits the content of the answer. "
+                    "If the answer does not fit any of these categories, respond with 'N/A'.\n\n"
                     f"Question: {question_text}\n"
                     f"Answer: {answer_text}\n\n{anchor_c}"
                 )
