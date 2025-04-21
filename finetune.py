@@ -1,128 +1,128 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-LoRA / QLoRA fine‑tuning script for smaller (≈3 B) causal‑LMs.
+LoRA / QLoRA fine‑tuning for **meta‑llama/Llama‑3.2‑3B** on ≈5 k domain samples.
+Designed for a single 40 GB A100 GPU.
 
-Usage examples
---------------
-# Question model – LLaMA‑3.2‑3B – fp16
-python finetune_peft_small.py \
+Key defaults
+-------------
+* **QLoRA‑8 bit** loading (fits comfortably).
+* **LoRA r = 32, α = 64, dropout = 0.1** → enough capacity for small corpora.
+* **1 epoch** + EarlyStopping(patience = 1) + **val‑split 20 %**.
+* Cosine LR 3 e‑4, warm‑up 10 %, weight‑decay 0.05.
+* Effective batch = 32 (tokens ≤ 768) via `batch_size 8 × grad_acc 4`.
+
+Use two prepared datasets:
+`question_dataset.jsonl` or `answer_dataset.jsonl` under `data/finetune_data/`,
+each line: `{ "prompt": "…", "response": "…" }`.
+
+Example (question fine‑tune)
+---------------------------
+```bash
+python finetune_llama3_lora.py \
   --task question \
-  --model_name meta-llama/Llama-3.2-3B \
   --data_dir data/finetune_data \
-  --output_dir ft_q_llama
-
-# Answer model – Falcon‑3B – 8‑bit QLoRA
-python finetune_peft_small.py \
-  --task answer \
-  --model_name tiiuae/Falcon-3B-Instruct \
-  --bits 8 \
-  --data_dir data/finetune_data \
-  --output_dir ft_a_falcon
+  --output_dir models/ft_q_llama3
+```
 """
-import argparse, os, random, json, torch, numpy as np
-from inspect import signature
+import argparse, os, random, math, torch, numpy as np
 from datasets import load_dataset
 from transformers import (
-    AutoModelForCausalLM,
     AutoTokenizer,
+    AutoModelForCausalLM,
     TrainingArguments,
     Trainer,
     EarlyStoppingCallback,
+    DataCollatorForLanguageModeling,
 )
-
 from peft import (
     LoraConfig,
-    TaskType,
-    get_peft_model,
     prepare_model_for_kbit_training,
+    get_peft_model,
+    TaskType,
 )
 
-# ----------------------------------------------------------------------------- #
-# utilities
-# ----------------------------------------------------------------------------- #
-def set_seed(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+# ------------------------------------------------------------------
+# util
+# ------------------------------------------------------------------
+
+def set_seed(s: int):
+    random.seed(s); np.random.seed(s); torch.manual_seed(s); torch.cuda.manual_seed_all(s)
 
 
 def load_jsonl(path: str):
     return load_dataset("json", data_files=path, split="train")
 
 
-def default_target_modules(model_name: str):
-    name = model_name.lower()
-    if any(k in name for k in ["llama", "alpaca", "mistral"]):
-        return ["q_proj", "v_proj"]
-    if "falcon" in name:
-        return ["query_key_value"]
-    # generic fallback
-    return ["q_proj", "v_proj"]
+# ------------------------------------------------------------------
+# metric
+# ------------------------------------------------------------------
+
+def perplexity(eval_pred):
+    loss = eval_pred["loss"]
+    try:
+        ppl = math.exp(loss)
+    except OverflowError:
+        ppl = float("inf")
+    return {"perplexity": ppl}
 
 
-# ----------------------------------------------------------------------------- #
-# main training routine
-# ----------------------------------------------------------------------------- #
+# ------------------------------------------------------------------
+# main
+# ------------------------------------------------------------------
+
 def main():
-    parser = argparse.ArgumentParser("LoRA / QLoRA fine‑tuning (question|answer)")
-    parser.add_argument("--task", choices=["question", "answer"], required=True)
-    parser.add_argument("--model_name", required=True, help="HF hub ID or local path")
-    parser.add_argument("--data_dir", default="data/finetune_data")
-    parser.add_argument("--output_dir", default="ft_ckpt")
-    parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--max_tokens", type=int, default=1024)
-    parser.add_argument("--bits", type=int, default=16, choices=[4, 8, 16])
-    parser.add_argument("--val_split", type=float, default=0.15)
-    parser.add_argument("--seed", type=int, default=42)
+    p = argparse.ArgumentParser()
+    p.add_argument("--task", choices=["question", "answer"], required=True)
+    p.add_argument("--data_dir", default="data/finetune_data")
+    p.add_argument("--output_dir", default="ft_ckpt")
+    p.add_argument("--epochs", type=int, default=1)
+    p.add_argument("--batch_size", type=int, default=8)
+    p.add_argument("--lr", type=float, default=3e-4)
+    p.add_argument("--weight_decay", type=float, default=0.05)
+    p.add_argument("--max_tokens", type=int, default=768)
+    p.add_argument("--bits", type=int, default=8, choices=[4, 8, 16])
+    p.add_argument("--val_split", type=float, default=0.2)
+    p.add_argument("--warmup_ratio", type=float, default=0.1)
+    p.add_argument("--seed", type=int, default=42)
+    # optional overrides
+    p.add_argument("--lora_r", type=int, default=32)
+    p.add_argument("--lora_alpha", type=int, default=64)
+    p.add_argument("--lora_dropout", type=float, default=0.1)
+    args = p.parse_args()
 
-    # LoRA overrides
-    parser.add_argument("--lora_r", type=int, default=16)
-    parser.add_argument("--lora_alpha", type=int, default=32)
-    parser.add_argument("--lora_dropout", type=float, default=0.1)
-    parser.add_argument("--target_modules", nargs="*", default=None)
-
-    args = parser.parse_args()
     set_seed(args.seed)
 
-    # dataset selection --------------------------------------------------------
+    base_model = "meta-llama/Llama-3.2-3B"
+
+    # ---------------- data ---------------------
     fname = "question_dataset.jsonl" if args.task == "question" else "answer_dataset.jsonl"
     ds_path = os.path.join(args.data_dir, fname)
     dataset = load_jsonl(ds_path)
-
     val_size = max(1, int(len(dataset) * args.val_split))
     train_ds, val_ds = dataset.train_test_split(test_size=val_size, seed=args.seed).values()
 
-    # tokenizer / model --------------------------------------------------------
-    load_kwargs = {"device_map": "auto"}
+    # ---------------- model/tokenizer ----------
+    load_kw = {"device_map": "auto"}
     if args.bits == 16:
-        load_kwargs["torch_dtype"] = torch.float16
-    else:  # 8‑bit / 4‑bit
-        load_kwargs[f"load_in_{args.bits}bit"] = True
+        load_kw["torch_dtype"] = torch.float16
+    else:
+        load_kw[f"load_in_{args.bits}bit"] = True
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=False)
-
-    # ensure pad token exists
+    tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(args.model_name, **load_kwargs)
-    if tokenizer.pad_token_id != model.config.pad_token_id:
-        model.resize_token_embeddings(len(tokenizer))
-        model.config.pad_token_id = tokenizer.pad_token_id
+    model = AutoModelForCausalLM.from_pretrained(base_model, **load_kw)
+    model.resize_token_embeddings(len(tokenizer))
 
     if args.bits in (4, 8):
         model = prepare_model_for_kbit_training(model)
 
-    # LoRA setup --------------------------------------------------------------
-    tgt_modules = args.target_modules or default_target_modules(args.model_name)
     lora_cfg = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
-        target_modules=tgt_modules,
+        target_modules=["q_proj", "v_proj"],  # llama3
         lora_dropout=args.lora_dropout,
         bias="none",
         task_type=TaskType.CAUSAL_LM,
@@ -130,87 +130,60 @@ def main():
     model = get_peft_model(model, lora_cfg)
     model.print_trainable_parameters()
 
-    # tokenisation ------------------------------------------------------------
-    def tok_fn(ex):
+    # ---------------- tokenisation ------------
+    def tok(ex):
         enc = tokenizer(
             ex["prompt"] + ex["response"],
-            truncation=True,
             max_length=args.max_tokens,
+            truncation=True,
             padding="max_length",
         )
-        enc["labels"] = enc["input_ids"].copy()   # ← add labels for loss
+        enc["labels"] = enc["input_ids"].copy()
         return enc
 
+    train_ds = train_ds.map(tok, remove_columns=train_ds.column_names)
+    val_ds = val_ds.map(tok, remove_columns=val_ds.column_names)
+    train_ds.set_format("torch"); val_ds.set_format("torch")
 
-    train_ds = train_ds.map(tok_fn, remove_columns=train_ds.column_names)
-    val_ds = val_ds.map(tok_fn, remove_columns=val_ds.column_names)
-    train_ds.set_format("torch")
-    val_ds.set_format("torch")
+    collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
-    # TrainingArguments – version‑aware ---------------------------------------
-    # ---------------------------------------------------------
-    # build TrainingArguments kwargs version‑safely
-    # ---------------------------------------------------------
-    ta_sig = signature(TrainingArguments)
-
-    kwargs = dict(
+    # ---------------- training args -----------
+    targs = TrainingArguments(
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
         learning_rate=args.lr,
-        fp16=(args.bits == 16),
-        logging_steps=25,
+        weight_decay=args.weight_decay,
+        warmup_ratio=args.warmup_ratio,
+        lr_scheduler_type="cosine",
+        evaluation_strategy="epoch",
         save_strategy="epoch",
-        save_total_limit=1,
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_perplexity",
         seed=args.seed,
+        fp16=(args.bits == 16),
         gradient_accumulation_steps=4,
+        save_total_limit=1,
+        logging_steps=25,
+        report_to="none",
     )
-
-    # evaluation handling
-    if "evaluation_strategy" in ta_sig.parameters:
-        # modern versions (>=4.3)
-        kwargs.update(
-            evaluation_strategy="epoch",
-            load_best_model_at_end=True,
-            metric_for_best_model="loss",
-        )
-    elif "eval_steps" in ta_sig.parameters:
-        # very old versions: fall back to eval_steps every epoch
-        steps_per_epoch = max(1, len(train_ds) // args.batch_size)
-        kwargs.update(eval_steps=steps_per_epoch)
-        # load_best_model_at_end may not exist; add only if present
-        if "load_best_model_at_end" in ta_sig.parameters:
-            kwargs["load_best_model_at_end"] = False
-
-    targs = TrainingArguments(**kwargs)
-
-    # ---------------------------------------------------------
-    # decide whether EarlyStopping is usable for this HF version
-    # ---------------------------------------------------------
-    use_early_stop = (
-        "evaluation_strategy" in ta_sig.parameters       # new Trainer
-        and kwargs.get("load_best_model_at_end", False)  # metric tracking enabled
-    )
-
-    callbacks = [EarlyStoppingCallback(early_stopping_patience=2)] if use_early_stop else []
 
     trainer = Trainer(
         model=model,
         args=targs,
         train_dataset=train_ds,
         eval_dataset=val_ds,
+        data_collator=collator,
         tokenizer=tokenizer,
-        callbacks=callbacks,   # <‑‑ here
+        compute_metrics=perplexity,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=1)],
     )
 
-
-    # train -------------------------------------------------------------------
     trainer.train()
-    model.save_pretrained(args.output_dir)
+    trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
-    print(f"✅ Finished fine‑tuning {args.task}. Saved to {args.output_dir}")
-
+    print(f"✅ Saved adapter to {args.output_dir}")
 
 if __name__ == "__main__":
     main()
