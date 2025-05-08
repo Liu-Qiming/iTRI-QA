@@ -60,7 +60,7 @@ def main() -> None:
         src = json.load(fp)
     questions = src.get("questions", [])
 
-    with jsonlines.open(args.output, mode="w") as writer:
+    with jsonlines.open(args.output, mode="a") as writer:
         cache: dict[str, str] = {}
 
         for entry in tqdm(questions, desc="Processing questions"):

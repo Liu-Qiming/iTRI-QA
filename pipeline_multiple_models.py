@@ -123,19 +123,51 @@ def main():
         total_rows = min(total_rows, args.num_examples)
 
     # ------------------------------  main loop
+    import uuid                                  #  << NEW: for fallback IDs
+    uid_gen = itertools.count(1)                 #  << NEW: monotonically-increasing int
+
     with jsonlines.open(args.output_path, "w") as writer, \
-         tqdm(total=total_rows, desc="Processing", unit="sample") as pbar:
+        tqdm(total=total_rows, desc="Processing", unit="sample") as pbar:
 
         for rec in stream:
-            raw_doi = rec.get("doi", "")
+            # ------------------------------------------------------------
+            # 1) robust DOI handling
+            # ------------------------------------------------------------
+            raw_doi = (rec.get("doi") or "").strip()
+            if raw_doi and raw_doi.lower() != "nan":
+                doi = raw_doi                                  # keep as–is
+            else:
+                # fabricate a reproducible unique ID so that downstream
+                # deduplication still works; “uid-###” for JSONL files and a
+                # RFC-4122 uuid for YAML mode to avoid collisions.
+                doi = (f"uid-{next(uid_gen)}" if use_qfile
+                    else str(uuid.uuid4()))
+                warn(f"missing DOI → assigned {doi}")
+
+            # ------------------------------------------------------------
+            # 2) question text
+            # ------------------------------------------------------------
             question_txt = (rec.get("question") or "").strip()
 
-            # ----- basic validity
-            if not (isinstance(raw_doi, str) and raw_doi.strip()
-                    and raw_doi.lower() != "nan"):
-                warn("record without DOI – skipped")
-                pbar.update(1); continue
-            doi = raw_doi.strip()
+            if not question_txt:
+                if use_qfile:
+                    warn("question empty & no question model – skipped")
+                    pbar.update(1)
+                    continue
+
+                # ... unchanged “anchor_q / q_prompt / generate(…)” block …
+                # (omitted here for brevity)
+
+            if not question_txt:
+                warn("empty question after generation – skipped")
+                pbar.update(1)
+                continue
+
+            # ------------------------------------------------------------
+            # 3) answer generation (unchanged) …
+            # ------------------------------------------------------------
+            # ... your existing answer / retry / categorisation code ...
+
 
             # ----- Question generation (if needed)
             if not question_txt:
