@@ -1,0 +1,21 @@
+(itri) (base) qliu@Mao-Ubuntu:/srv/shared-projects/iTRI-GPT$ python eval_output.py --ref data/test-data/golden_1.jsonl --pred record/test-output-rich/test-adapter-llama.jsonl 
+Some weights of RobertaModel were not initialized from the model checkpoint at roberta-large and are newly initialized: ['roberta.pooler.dense.bias', 'roberta.pooler.dense.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+ROUGE-L   : 17.53
+BERTScore : 85.66
+QuestEval : (metric not installed)
+N         : 340
+(itri) (base) qliu@Mao-Ubuntu:/srv/shared-projects/iTRI-GPT$ python eval_output.py --ref data/test-data/golden_1.jsonl --pred record/test-output-rich/test-llama.jsonl 
+Some weights of RobertaModel were not initialized from the model checkpoint at roberta-large and are newly initialized: ['roberta.pooler.dense.bias', 'roberta.pooler.dense.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+ROUGE-L   : 17.17
+BERTScore : 85.47
+QuestEval : (metric not installed)
+N         : 340
+(itri) (base) qliu@Mao-Ubuntu:/srv/shared-projects/iTRI-GPT$ python eval_output.py --ref data/test-data/golden_1.jsonl --pred record/test-output-rich/test_a_falcon.jsonl
+Some weights of RobertaModel were not initialized from the model checkpoint at roberta-large and are newly initialized: ['roberta.pooler.dense.bias', 'roberta.pooler.dense.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+ROUGE-L   : 13.54
+BERTScore : 82.32
+QuestEval : (metric not installed)
+N         : 340
